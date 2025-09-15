@@ -6,16 +6,22 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        GameViewControllerRepresentable()
+            .ignoresSafeArea()
+    }
+}
+
+struct GameViewControllerRepresentable: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> GravityWellGameViewController {
+        return GravityWellGameViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: GravityWellGameViewController, context: Context) {
+        // No updates needed
     }
 }
 

@@ -20,10 +20,6 @@ An arcade-themed physics puzzle game for iOS featuring motion controls and retro
 Protect the central portal by collecting shapes in their matching zones. Lose lives when shapes hit the portal. Score points and advance levels by successful
 collections.
 
-## Requirements
-- iOS 18.5+
-- Device with motion sensors (gyroscope/accelerometer)
-
 ## Architecture
 Clean MVVM architecture with separated concerns:
 - `GameState`: Score, lives, level management

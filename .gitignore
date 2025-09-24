@@ -1,0 +1,21 @@
+# Swift Package Manager
+Package.resolved
+.swiftpm/
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+*.playground/
+DerivedData/
+*.hmap
+*.ipa
+*.xcuserstate
+
+### VS Code ###
+.vscode/
+
+# macOS
+.DS_Store
+.build
+.idea
+.claude

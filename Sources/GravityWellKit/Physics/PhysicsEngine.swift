@@ -299,11 +299,15 @@ public final class PhysicsWorld {
     }
 
     public func getAllBodies() -> [PhysicsBody] {
-        return Array(bodies.values)
+        physicsQueue.sync {
+            return Array(bodies.values)
+        }
     }
 
     public func getAllForceFields() -> [ForceField] {
-        return Array(forceFields.values)
+        physicsQueue.sync {
+            return Array(forceFields.values)
+        }
     }
 
     public func removeAllBodies() {

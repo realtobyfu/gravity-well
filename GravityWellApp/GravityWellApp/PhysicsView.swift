@@ -43,45 +43,47 @@ struct PhysicsView: UIViewRepresentable {
             self.viewModel = viewModel
             super.init()
 
-            if let device = MTLCreateSystemDefaultDevice() {
-                do {
-                    self.renderer = try MetalRenderer(device: device)
-                } catch {
-                    print("Failed to create renderer: \(error)")
-                }
+            if MTLCreateSystemDefaultDevice() != nil {
+                self.renderer = MetalRenderer()
             }
         }
 
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+            // Use the drawable size (in pixels) for rendering
             renderer?.viewportSize = simd_uint2(UInt32(size.width), UInt32(size.height))
         }
 
         func draw(in view: MTKView) {
             guard let renderer = renderer,
-                  let drawable = view.currentDrawable,
                   let world = viewModel.world else { return }
 
             // Update FPS
-            viewModel.updateFPS()
+            Task { @MainActor in
+                viewModel.updateFPS()
+            }
 
             // Render the physics world
             renderer.render(
-                world: world,
-                to: drawable,
-                viewportSize: CGSize(width: CGFloat(view.drawableSize.width),
-                                    height: CGFloat(view.drawableSize.height))
+                objects: world.getAllBodies(),
+                forceFields: world.getAllForceFields(),
+                in: view,
+                time: CACurrentMediaTime()
             )
         }
 
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
             let location = gesture.location(in: gesture.view)
-            viewModel.addShape(at: location)
+            Task { @MainActor in
+                viewModel.addShape(at: location)
+            }
         }
 
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard gesture.state == .began else { return }
             let location = gesture.location(in: gesture.view)
-            viewModel.addGravityWell(at: location)
+            Task { @MainActor in
+                viewModel.addGravityWell(at: location)
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 import SwiftUI
-import GravityWellKit
+//import GravityWellKit
 
 struct ContentView: View {
     @StateObject private var viewModel = PhysicsViewModel()
@@ -21,13 +21,13 @@ struct ContentView: View {
                 HStack {
                     Text("FPS: \(String(format: "%.1f", viewModel.fps))")
                         .padding(8)
-                        .background(Color.black.opacity(0.7))
+                        .background(SwiftUI.Color.black.opacity(0.7))
                         .foregroundColor(.white)
                         .cornerRadius(8)
 
                     Text("Objects: \(viewModel.objectCount)")
                         .padding(8)
-                        .background(Color.black.opacity(0.7))
+                        .background(SwiftUI.Color.black.opacity(0.7))
                         .foregroundColor(.white)
                         .cornerRadius(8)
 
@@ -36,7 +36,7 @@ struct ContentView: View {
                     Button(action: { showingControls.toggle() }) {
                         Image(systemName: "slider.horizontal.3")
                             .padding(8)
-                            .background(Color.black.opacity(0.7))
+                            .background(SwiftUI.Color.black.opacity(0.7))
                             .foregroundColor(.white)
                             .cornerRadius(8)
                     }
@@ -95,20 +95,27 @@ struct ContentView: View {
                         }
                     }
                     .padding()
-                    .background(Color.black.opacity(0.8))
+                    .background(SwiftUI.Color.black.opacity(0.8))
                     .cornerRadius(15)
                     .padding()
                 }
             }
         }
         .onAppear {
-            viewModel.setupDemo()
+            // Get screen bounds in pixels (not points) for physics world
+            let screenBounds = UIScreen.main.bounds
+            let scale = UIScreen.main.scale
+            let pixelSize = CGSize(
+                width: screenBounds.width * scale,
+                height: screenBounds.height * scale
+            )
+            viewModel.setupDemo(viewportSize: pixelSize)
         }
     }
 }
 
 struct DemoButtonStyle: ButtonStyle {
-    var color: Color = .blue
+    var color: SwiftUI.Color = .blue
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

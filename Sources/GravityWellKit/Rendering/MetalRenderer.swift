@@ -47,9 +47,18 @@ public final class MetalRenderer: NSObject {
         let vertexFunction = library.makeFunction(name: "vertex_main")
         let fragmentFunction = library.makeFunction(name: "fragment_main")
 
+        let vertexDescriptor = MTLVertexDescriptor()
+        vertexDescriptor.attributes[0].format = .float2
+        vertexDescriptor.attributes[0].offset = 0
+        vertexDescriptor.attributes[0].bufferIndex = 0
+        vertexDescriptor.layouts[0].stride = MemoryLayout<simd_float2>.stride
+        vertexDescriptor.layouts[0].stepRate = 1
+        vertexDescriptor.layouts[0].stepFunction = .perVertex
+
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
+        pipelineDescriptor.vertexDescriptor = vertexDescriptor
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
 
         pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
@@ -123,7 +132,7 @@ public final class MetalRenderer: NSObject {
 
         fragment float4 fragment_main(
             VertexOut in [[stage_in]],
-            constant Uniforms &uniforms [[buffer(0)]
+            constant Uniforms &uniforms [[buffer(0)]]
         ) {
             float2 coord = in.texCoord;
             float distance = length(coord);

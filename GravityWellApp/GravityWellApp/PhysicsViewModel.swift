@@ -11,19 +11,28 @@ class PhysicsViewModel: NSObject, ObservableObject {
     var world: PhysicsWorld?
     private var lastFrameTime: CFTimeInterval = 0
     private var frameCount = 0
+    private var viewportSize: CGSize = CGSize(width: 390, height: 844) // Default iPhone size
 
     override init() {
         super.init()
     }
 
-    func setupDemo() {
-        // Create physics world
-        let bounds = PhysicsBounds(minX: 0, maxX: 1000, minY: 0, maxY: 1000)
+    func setupDemo(viewportSize: CGSize = CGSize(width: 390, height: 844)) {
+        self.viewportSize = viewportSize
+        // Create physics world matching viewport size
+        let bounds = PhysicsBounds(
+            minX: 0,
+            maxX: Float(viewportSize.width),
+            minY: 0,
+            maxY: Float(viewportSize.height)
+        )
         world = PhysicsWorld(bounds: bounds)
         world?.delegate = self
 
         // Register with intent handler for Siri support
-        PhysicsIntentHandler.shared.setActiveWorld(world!)
+        if let world = world {
+            PhysicsIntentHandler.shared.setActiveWorld(world)
+        }
 
         // Add initial objects
         addInitialObjects()
@@ -32,10 +41,16 @@ class PhysicsViewModel: NSObject, ObservableObject {
     private func addInitialObjects() {
         guard let world = world else { return }
 
-        // Add some initial shapes
+        // Add some initial shapes distributed across the screen
+        let centerX = Float(viewportSize.width / 2)
+        let centerY = Float(viewportSize.height / 2)
+
         for i in 0..<10 {
             let shape = PhysicsShape(
-                circleAt: Vector2(Float(200 + i * 60), Float(200 + i * 30)),
+                circleAt: Vector2(
+                    Float.random(in: 50...Float(viewportSize.width - 50)),
+                    Float.random(in: 50...Float(viewportSize.height / 2))
+                ),
                 radius: Float.random(in: 10...25),
                 mass: Float.random(in: 0.5...2.0)
             )
@@ -48,7 +63,7 @@ class PhysicsViewModel: NSObject, ObservableObject {
 
         // Add central gravity well
         let gravityWell = GravityWell(
-            position: Vector2(500, 500),
+            position: Vector2(centerX, centerY),
             strength: 1500,
             range: 300
         )

@@ -1,4 +1,4 @@
-# Gravity Well - Physics Framework with Visual Intelligence
+# Gravity Well
 
 A high-performance iOS physics framework built with Swift, featuring visual intelligence integration and App Intents support for natural language physics control.
 

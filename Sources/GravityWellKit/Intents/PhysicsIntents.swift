@@ -1,6 +1,10 @@
 import Foundation
 import AppIntents
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 @available(iOS 17.0, macOS 14.0, *)
 public struct SetGravityIntent: AppIntent {
@@ -14,8 +18,8 @@ public struct SetGravityIntent: AppIntent {
     public var customValue: Double?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("Set gravity to \\(\\gravityType)") {
-            \\customValue
+        Summary("Set gravity to \(\.$gravityType)") {
+            \.$customValue
         }
     }
 
@@ -40,7 +44,7 @@ public struct SetGravityIntent: AppIntent {
         await PhysicsIntentHandler.shared.setGravity(Vector2(0, gravityValue))
 
         let planetName = gravityType == .custom ? "custom value" : gravityType.rawValue
-        return .result(value: "Gravity set to \\(planetName) (\\(gravityValue) m/s²)")
+        return .result(value: "Gravity set to \(planetName) (\(gravityValue) m/s²)")
     }
 
     public init() {}
@@ -87,8 +91,8 @@ public struct SpawnShapesIntent: AppIntent {
     public var spawnPosition: SpawnPosition?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("Spawn \\(\\count) \\(\\shapeType) shapes") {
-            \\spawnPosition
+        Summary("Spawn \(\.$count) \(\.$shapeType) shapes") {
+            \.$spawnPosition
         }
     }
 
@@ -101,7 +105,7 @@ public struct SpawnShapesIntent: AppIntent {
             position: spawnPosition?.toVector2()
         )
 
-        return .result(value: "Spawned \\(clampedCount) \\(shapeType.rawValue) shapes")
+        return .result(value: "Spawned \(clampedCount) \(shapeType.rawValue) shapes")
     }
 
     public init() {}
@@ -192,8 +196,8 @@ public struct CreateGravityWellIntent: AppIntent {
     public var position: SpawnPosition?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("Create gravity well with strength \\(\\strength)") {
-            \\position
+        Summary("Create gravity well with strength \(\.$strength)") {
+            \.$position
         }
     }
 
@@ -206,7 +210,7 @@ public struct CreateGravityWellIntent: AppIntent {
             strength: wellStrength
         )
 
-        return .result(value: "Created gravity well with strength \\(wellStrength)")
+        return .result(value: "Created gravity well with strength \(wellStrength)")
     }
 
     public init() {}
@@ -236,9 +240,8 @@ public struct PhysicsShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: SetGravityIntent(),
             phrases: [
-                "Set gravity to \\(.applicationName)",
-                "Change gravity in \\(.applicationName)",
-                "Set \\(\\gravityType) gravity"
+                "Set gravity in \(.applicationName)",
+                "Change gravity in \(.applicationName)"
             ],
             shortTitle: "Set Gravity",
             systemImageName: "globe"
@@ -247,9 +250,8 @@ public struct PhysicsShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: SpawnShapesIntent(),
             phrases: [
-                "Spawn shapes in \\(.applicationName)",
-                "Add \\(\\count) shapes",
-                "Create \\(\\count) \\(\\shapeType) shapes"
+                "Spawn shapes in \(.applicationName)",
+                "Add shapes to \(.applicationName)"
             ],
             shortTitle: "Spawn Shapes",
             systemImageName: "circle.fill"
@@ -258,8 +260,9 @@ public struct PhysicsShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: CreateGravityWellIntent(),
             phrases: [
-                "Create gravity well",
-                "Add gravity well with strength \\(\\strength)"
+                "Create gravity well in \(.applicationName)",
+                "Add gravity well in \(.applicationName)",
+                "Place gravity well in \(.applicationName)"
             ],
             shortTitle: "Create Gravity Well",
             systemImageName: "dot.radiowaves.left.and.right"
@@ -268,9 +271,9 @@ public struct PhysicsShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: ClearSimulationIntent(),
             phrases: [
-                "Clear simulation",
-                "Reset physics",
-                "Clear all objects"
+                "Clear simulation in \(.applicationName)",
+                "Reset physics in \(.applicationName)",
+                "Clear all objects in \(.applicationName)"
             ],
             shortTitle: "Clear Simulation",
             systemImageName: "trash"
@@ -301,7 +304,7 @@ public final class PhysicsIntentHandler: ObservableObject {
 
         let spawnPosition = position ?? Vector2(400, 300)
 
-        for i in 0..<count {
+        for _ in 0..<count {
             let offset = Vector2(
                 Float.random(in: -50...50),
                 Float.random(in: -50...50)
@@ -340,10 +343,17 @@ private final class PhysicsObjectFactory {
             mass: Float.random(in: 0.5...2.0)
         )
 
+        #if canImport(UIKit)
         shape.color = [
             .systemBlue, .systemRed, .systemGreen,
             .systemOrange, .systemPurple, .systemPink
         ].randomElement() ?? .systemBlue
+        #else
+        shape.color = [
+            .blue, .red, .green,
+            .orange, .purple, .systemPink
+        ].randomElement() ?? .blue
+        #endif
 
         return shape
     }

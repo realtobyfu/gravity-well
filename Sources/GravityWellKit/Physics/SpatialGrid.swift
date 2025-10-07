@@ -7,7 +7,7 @@ internal final class SpatialGrid {
     private let gridWidth: Int
     private let gridHeight: Int
 
-    private var grid: [[PhysicsBody]]
+    private var grid: [[Array<PhysicsBody>]]
 
     init(bounds: PhysicsBounds, cellSize: Float) {
         self.bounds = bounds
@@ -16,7 +16,10 @@ internal final class SpatialGrid {
         self.gridHeight = Int(ceil((bounds.maxY - bounds.minY) / cellSize))
 
         self.grid = Array(
-            repeating: Array(repeating: [], count: gridHeight),
+            repeating: Array(
+                repeating: Array<PhysicsBody>(),
+                count: gridHeight
+            ),
             count: gridWidth
         )
     }

@@ -8,6 +8,12 @@ public final class ObjectPool<T: AnyObject> {
     private let maxSize: Int
     private let lock = NSLock()
 
+    // Statistics tracking
+    private var totalAcquires: Int = 0
+    private var totalCreations: Int = 0
+    private var totalReleases: Int = 0
+    private var totalReuses: Int = 0
+
     public init(
         maxSize: Int = 100,
         createObject: @escaping () -> T,
@@ -22,9 +28,13 @@ public final class ObjectPool<T: AnyObject> {
         lock.lock()
         defer { lock.unlock() }
 
+        totalAcquires += 1
+
         if let object = objects.popLast() {
+            totalReuses += 1
             return object
         } else {
+            totalCreations += 1
             return createObject()
         }
     }
@@ -35,6 +45,7 @@ public final class ObjectPool<T: AnyObject> {
 
         guard objects.count < maxSize else { return }
 
+        totalReleases += 1
         resetObject(object)
         objects.append(object)
     }
@@ -50,6 +61,37 @@ public final class ObjectPool<T: AnyObject> {
         defer { lock.unlock() }
         return objects.count
     }
+
+    public func getStatistics() -> PoolStatistics {
+        lock.lock()
+        defer { lock.unlock() }
+        return PoolStatistics(
+            totalAcquires: totalAcquires,
+            totalCreations: totalCreations,
+            totalReuses: totalReuses,
+            totalReleases: totalReleases,
+            availableCount: objects.count,
+            reuseRate: totalAcquires > 0 ? Double(totalReuses) / Double(totalAcquires) * 100 : 0
+        )
+    }
+
+    public func resetStatistics() {
+        lock.lock()
+        defer { lock.unlock() }
+        totalAcquires = 0
+        totalCreations = 0
+        totalReuses = 0
+        totalReleases = 0
+    }
+}
+
+public struct PoolStatistics {
+    public let totalAcquires: Int
+    public let totalCreations: Int
+    public let totalReuses: Int
+    public let totalReleases: Int
+    public let availableCount: Int
+    public let reuseRate: Double
 }
 
 @available(iOS 17.0, macOS 14.0, *)
@@ -67,7 +109,11 @@ public final class PhysicsObjectPool {
             shape.acceleration = .zero
             shape.mass = 1.0
             shape.isStatic = false
+            #if canImport(UIKit)
             shape.color = .systemBlue
+            #else
+            shape.color = .blue
+            #endif
         }
     )
 
@@ -106,6 +152,19 @@ public final class PhysicsObjectPool {
     public func clearAll() {
         shapePool.clear()
         particlePool.clear()
+    }
+
+    public func getShapePoolStatistics() -> PoolStatistics {
+        return shapePool.getStatistics()
+    }
+
+    public func getParticlePoolStatistics() -> PoolStatistics {
+        return particlePool.getStatistics()
+    }
+
+    public func resetStatistics() {
+        shapePool.resetStatistics()
+        particlePool.resetStatistics()
     }
 }
 

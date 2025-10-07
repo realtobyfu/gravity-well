@@ -1,24 +1,28 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 import Dispatch
+import simd
 
 @available(iOS 17.0, macOS 14.0, *)
 public final class PhysicsEngine {
     public static let shared = PhysicsEngine()
 
     private var isInitialized = false
-    private let engineQueue = DispatchQueue(
-        label: "com.gravitywell.physics-engine",
-        qos: .userInteractive,
-        attributes: .concurrent
-    )
 
     private let updateQueue = DispatchQueue(
         label: "com.gravitywell.physics-update",
         qos: .userInteractive
     )
 
+    #if canImport(UIKit)
     private var displayLink: CADisplayLink?
+    #else
+    private var timer: Timer?
+    #endif
     private var lastUpdateTime: CFTimeInterval = 0
 
     private init() {}
@@ -26,15 +30,22 @@ public final class PhysicsEngine {
     public func initialize() {
         guard !isInitialized else { return }
         isInitialized = true
-        setupDisplayLink()
+        setupUpdateLoop()
     }
 
-    private func setupDisplayLink() {
+    private func setupUpdateLoop() {
+        #if canImport(UIKit)
         displayLink = CADisplayLink(target: self, selector: #selector(update))
         displayLink?.preferredFramesPerSecond = 60
         displayLink?.add(to: .main, forMode: .common)
+        #else
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
+            self?.update()
+        }
+        #endif
     }
 
+    #if canImport(UIKit)
     @objc private func update(displayLink: CADisplayLink) {
         let currentTime = displayLink.timestamp
         let deltaTime = lastUpdateTime == 0 ? 0 : currentTime - lastUpdateTime
@@ -46,6 +57,19 @@ public final class PhysicsEngine {
             self?.updatePhysics(deltaTime: deltaTime)
         }
     }
+    #else
+    @objc private func update() {
+        let currentTime = CFAbsoluteTimeGetCurrent()
+        let deltaTime = lastUpdateTime == 0 ? 0 : currentTime - lastUpdateTime
+        lastUpdateTime = currentTime
+
+        guard deltaTime > 0 && deltaTime < 0.1 else { return }
+
+        updateQueue.async { [weak self] in
+            self?.updatePhysics(deltaTime: deltaTime)
+        }
+    }
+    #endif
 
     private func updatePhysics(deltaTime: TimeInterval) {
         PhysicsWorld.activeWorlds.forEach { world in
@@ -54,17 +78,32 @@ public final class PhysicsEngine {
     }
 
     public func pause() {
+        #if canImport(UIKit)
         displayLink?.isPaused = true
+        #else
+        timer?.invalidate()
+        #endif
     }
 
     public func resume() {
+        #if canImport(UIKit)
         displayLink?.isPaused = false
+        #else
+        if timer == nil || !timer!.isValid {
+            setupUpdateLoop()
+        }
+        #endif
         lastUpdateTime = 0
     }
 
     public func shutdown() {
+        #if canImport(UIKit)
         displayLink?.invalidate()
         displayLink = nil
+        #else
+        timer?.invalidate()
+        timer = nil
+        #endif
         isInitialized = false
     }
 

@@ -1,5 +1,10 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+import simd
 
 @available(iOS 17.0, macOS 14.0, *)
 public final class GravityWell: ForceField {
@@ -11,7 +16,11 @@ public final class GravityWell: ForceField {
 
     public var falloffType: FalloffType = .inverseSquare
     public var minDistance: Float = 5.0
+    #if canImport(UIKit)
     public var color: UIColor = .systemPurple
+    #else
+    public var color: NSColor = .systemPurple
+    #endif
 
     public enum FalloffType {
         case linear

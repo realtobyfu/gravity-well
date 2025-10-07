@@ -1,7 +1,11 @@
 import Foundation
 import Metal
 import MetalKit
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 import simd
 
 @available(iOS 17.0, macOS 14.0, *)
@@ -267,6 +271,7 @@ public final class MetalRenderer: NSObject {
         uniformPointer[0] = uniforms
     }
 
+    #if canImport(UIKit)
     private func getColor(for object: PhysicsBody) -> UIColor {
         if let shape = object as? PhysicsShape {
             return shape.color
@@ -277,6 +282,18 @@ public final class MetalRenderer: NSObject {
         }
         return .systemBlue
     }
+    #else
+    private func getColor(for object: PhysicsBody) -> NSColor {
+        if let shape = object as? PhysicsShape {
+            return shape.color
+        } else if let particle = object as? PhysicsParticle {
+            let ageRatio = Float(particle.age / particle.lifetime)
+            let alpha = 1.0 - ageRatio
+            return particle.color.withAlphaComponent(CGFloat(alpha))
+        }
+        return .systemBlue
+    }
+    #endif
 
     private func getShapeType(for object: PhysicsBody) -> Int32 {
         if let shape = object as? PhysicsShape {
@@ -305,9 +322,14 @@ private struct RenderUniforms {
 }
 
 public protocol VisualizableForceField: ForceField {
+    #if canImport(UIKit)
     var visualColor: UIColor { get }
+    #else
+    var visualColor: NSColor { get }
+    #endif
 }
 
+#if canImport(UIKit)
 @available(iOS 17.0, macOS 14.0, *)
 extension GravityWell: VisualizableForceField {
     public var visualColor: UIColor { color }
@@ -317,3 +339,14 @@ extension GravityWell: VisualizableForceField {
 extension RepulsionField: VisualizableForceField {
     public var visualColor: UIColor { .systemRed }
 }
+#else
+@available(iOS 17.0, macOS 14.0, *)
+extension GravityWell: VisualizableForceField {
+    public var visualColor: NSColor { color }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+extension RepulsionField: VisualizableForceField {
+    public var visualColor: NSColor { .systemRed }
+}
+#endif

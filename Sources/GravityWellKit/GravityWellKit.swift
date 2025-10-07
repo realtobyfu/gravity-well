@@ -1,5 +1,11 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+public typealias PlatformColor = UIColor
+#elseif canImport(AppKit)
+import AppKit
+public typealias PlatformColor = NSColor
+#endif
 import simd
 
 @available(iOS 17.0, macOS 14.0, *)

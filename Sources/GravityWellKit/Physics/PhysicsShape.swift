@@ -1,5 +1,11 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+public typealias Color = UIColor
+#elseif canImport(AppKit)
+import AppKit
+public typealias Color = NSColor
+#endif
 
 @available(iOS 17.0, macOS 14.0, *)
 public final class PhysicsShape: PhysicsBody {
@@ -13,7 +19,7 @@ public final class PhysicsShape: PhysicsBody {
 
     public var isDynamic: Bool { !isStatic }
     public let shapeType: PhysicsShapeType
-    public var color: UIColor = .systemBlue
+    public var color: Color = .systemBlue
     public var restitution: Float = 0.8
 
     private var accumulatedForces: Vector2 = .zero
@@ -102,9 +108,9 @@ public final class PhysicsShape: PhysicsBody {
         acceleration = .zero
     }
 
-    public func setStatic(_ static: Bool) {
-        isStatic = static
-        if static {
+    public func setStatic(_ isStaticValue: Bool) {
+        isStatic = isStaticValue
+        if isStaticValue {
             velocity = .zero
             acceleration = .zero
         }
@@ -122,7 +128,7 @@ public final class PhysicsParticle: PhysicsBody {
     public var isStatic: Bool = false
 
     public var isDynamic: Bool { !isStatic }
-    public var color: UIColor = .systemRed
+    public var color: Color = .systemRed
     public var lifetime: TimeInterval
     public private(set) var age: TimeInterval = 0
 

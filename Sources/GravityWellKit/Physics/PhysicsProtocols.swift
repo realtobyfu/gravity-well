@@ -1,12 +1,16 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 public protocol PhysicsBody: AnyObject {
     var id: UUID { get }
     var position: Vector2 { get set }
     var velocity: Vector2 { get set }
     var acceleration: Vector2 { get set }
-    var mass: Float { get set }
+    var mass: Float { get }
     var radius: Float { get }
     var isStatic: Bool { get set }
     var isDynamic: Bool { get }

@@ -2,7 +2,11 @@ import Foundation
 import Vision
 import CoreML
 import AVFoundation
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 @available(iOS 17.0, macOS 14.0, *)
 public protocol ShapeRecognitionDelegate: AnyObject {
@@ -17,8 +21,13 @@ public struct RecognizedShape {
     public let confidence: Float
     public let boundingBox: CGRect
     public let estimatedRadius: Float
+    #if canImport(UIKit)
     public let color: UIColor?
+    #else
+    public let color: NSColor?
+    #endif
 
+    #if canImport(UIKit)
     public init(
         type: PhysicsShapeType,
         confidence: Float,
@@ -32,6 +41,21 @@ public struct RecognizedShape {
         self.estimatedRadius = estimatedRadius
         self.color = color
     }
+    #else
+    public init(
+        type: PhysicsShapeType,
+        confidence: Float,
+        boundingBox: CGRect,
+        estimatedRadius: Float,
+        color: NSColor? = nil
+    ) {
+        self.type = type
+        self.confidence = confidence
+        self.boundingBox = boundingBox
+        self.estimatedRadius = estimatedRadius
+        self.color = color
+    }
+    #endif
 }
 
 @available(iOS 17.0, macOS 14.0, *)
@@ -97,6 +121,7 @@ public final class ShapeRecognitionEngine: NSObject {
         }
     }
 
+    #if canImport(UIKit)
     public func processImage(_ image: UIImage) {
         guard let cgImage = image.cgImage else { return }
 
@@ -111,6 +136,22 @@ public final class ShapeRecognitionEngine: NSObject {
             }
         }
     }
+    #else
+    public func processImage(_ image: NSImage) {
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+
+        trackingQueue.async { [weak self] in
+            let imageRequestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do {
+                try imageRequestHandler.perform(self?.visionRequests ?? [])
+            } catch {
+                DispatchQueue.main.async {
+                    self?.delegate?.shapeRecognitionDidFail(with: error)
+                }
+            }
+        }
+    }
+    #endif
 
     private func performVisionAnalysis(on pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation) {
         let imageRequestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation, options: [:])
@@ -180,11 +221,23 @@ public final class ShapeRecognitionEngine: NSObject {
             // Analyze contour to determine if it's circular
             let contour = observation.topLevelContours.first
             if let contour = contour, isCircular(contour: contour) {
-                let boundingBox = observation.boundingBox
+                // Calculate bounding box from contour points
+                let points = contour.normalizedPoints
+                let xCoords = points.map { $0.x }
+                let yCoords = points.map { $0.y }
+
+                let minX = xCoords.min() ?? 0
+                let maxX = xCoords.max() ?? 1
+                let minY = yCoords.min() ?? 0
+                let maxY = yCoords.max() ?? 1
+
+                let boundingBox = CGRect(x: CGFloat(minX), y: CGFloat(minY),
+                                        width: CGFloat(maxX - minX),
+                                        height: CGFloat(maxY - minY))
                 let estimatedRadius = Float(min(boundingBox.width, boundingBox.height) * 25)
 
                 let recognizedShape = RecognizedShape(
-                    type: .circle,
+                    type: PhysicsShapeType.circle,
                     confidence: confidence,
                     boundingBox: boundingBox,
                     estimatedRadius: estimatedRadius
@@ -211,23 +264,23 @@ public final class ShapeRecognitionEngine: NSObject {
 
         // Calculate center
         let center = points.reduce(CGPoint.zero) { sum, point in
-            CGPoint(x: sum.x + point.x, y: sum.y + point.y)
+            CGPoint(x: sum.x + CGFloat(point.x), y: sum.y + CGFloat(point.y))
         }
         let centroid = CGPoint(x: center.x / CGFloat(points.count), y: center.y / CGFloat(points.count))
 
         // Calculate distances from center
-        let distances = points.map { point in
-            let dx = point.x - centroid.x
-            let dy = point.y - centroid.y
+        let distances = points.map { point -> CGFloat in
+            let dx = CGFloat(point.x) - centroid.x
+            let dy = CGFloat(point.y) - centroid.y
             return sqrt(dx * dx + dy * dy)
         }
 
-        let averageDistance = distances.reduce(0, +) / Double(distances.count)
-        let variance = distances.map { pow($0 - averageDistance, 2) }.reduce(0, +) / Double(distances.count)
+        let averageDistance = distances.reduce(0, +) / CGFloat(distances.count)
+        let variance = distances.map { pow($0 - averageDistance, 2) }.reduce(0, +) / CGFloat(distances.count)
         let standardDeviation = sqrt(variance)
 
         // If standard deviation is low relative to average distance, it's likely circular
-        let circularityThreshold = 0.15
+        let circularityThreshold: CGFloat = 0.15
         return (standardDeviation / averageDistance) < circularityThreshold
     }
 
@@ -257,7 +310,11 @@ public final class ShapeRecognitionEngine: NSObject {
     }
 
     public func getTrackedShapes() -> [TrackedShape] {
-        return Array(trackedShapes.values)
+        var shapes: [TrackedShape] = []
+        trackingQueue.sync {
+            shapes = Array(self.trackedShapes.values)
+        }
+        return shapes
     }
 }
 

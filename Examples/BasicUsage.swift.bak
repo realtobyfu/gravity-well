@@ -1,0 +1,116 @@
+import Foundation
+import GravityWellKit
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
+@available(iOS 17.0, macOS 14.0, *)
+@main
+struct GravityWellDemo {
+    static func main() {
+        print("🌌 Gravity Well Physics Framework Demo")
+        print("======================================")
+
+        // Initialize the physics engine
+        GravityWellKit.initialize()
+
+        // Create a physics world
+        let bounds = PhysicsBounds(minX: 0, maxX: 800, minY: 0, maxY: 600)
+        let world = PhysicsWorld(bounds: bounds)
+
+        // Set up demo delegate
+        let delegate = DemoWorldDelegate()
+        world.delegate = delegate
+
+        // Register with intent handler
+        PhysicsIntentHandler.shared.setActiveWorld(world)
+
+        // Create some initial objects
+        print("\\n📦 Creating physics objects...")
+
+        // Add some shapes
+        for i in 0..<5 {
+            let shape = PhysicsShape(
+                circleAt: Vector2(Float(100 + i * 50), Float(100 + i * 20)),
+                radius: Float.random(in: 10...20),
+                mass: Float.random(in: 0.5...2.0)
+            )
+            shape.color = [.systemBlue, .systemRed, .systemGreen, .systemOrange].randomElement() ?? .systemBlue
+            world.addBody(shape)
+        }
+
+        // Add a gravity well
+        print("\\n🌀 Creating gravity well...")
+        let gravityWell = GravityWell(
+            position: Vector2(400, 300),
+            strength: 1000,
+            range: 250
+        )
+        world.addForceField(gravityWell)
+
+        // Add a repulsion field
+        print("\\n⚡ Creating repulsion field...")
+        let repulsionField = RepulsionField(
+            position: Vector2(200, 500),
+            strength: 500,
+            range: 150
+        )
+        world.addForceField(repulsionField)
+
+        print("\\n🚀 Physics simulation started!")
+        print("💡 Try these Siri commands:")
+        print("   • 'Set gravity to Jupiter'")
+        print("   • 'Spawn 10 circle shapes'")
+        print("   • 'Create gravity well with strength 2000'")
+        print("   • 'Clear simulation'")
+
+        // Performance monitoring
+        print("\\n📊 Performance monitoring enabled")
+        let monitor = PerformanceMonitor.shared
+
+        // Simulate running for a few seconds
+        let runLoop = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            let report = monitor.getPerformanceReport()
+            print("FPS: \\(String(format: "%.1f", report.fps)) | Physics: \\(String(format: "%.2f", report.averagePhysicsTime))ms | Grade: \\(report.performanceGrade)")
+        }
+
+        print("\\n✅ Demo setup complete! The physics simulation is running...")
+        print("🔧 Framework features demonstrated:")
+        print("   ✓ Protocol-oriented architecture")
+        print("   ✓ High-performance physics engine")
+        print("   ✓ Force fields and gravity wells")
+        print("   ✓ App Intents integration")
+        print("   ✓ Performance monitoring")
+        print("   ✓ Object pooling system")
+
+        // Keep the demo running
+        RunLoop.main.run()
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+ class DemoWorldDelegate: PhysicsWorldDelegate {
+    private var updateCount = 0
+
+    func physicsWorldDidUpdate(_ world: PhysicsWorld) {
+        updateCount += 1
+        PerformanceMonitor.shared.recordFrame()
+
+        // Print status every 60 updates (approximately 1 second at 60 FPS)
+        if updateCount % 60 == 0 {
+            // Could log physics state here if needed
+        }
+    }
+
+    func physicsWorld(_ world: PhysicsWorld, didAdd body: PhysicsBody) {
+        if let shape = body as? PhysicsShape {
+            print("➕ Added \\(shape.shapeType) shape at \\(shape.position)")
+        }
+    }
+
+    func physicsWorld(_ world: PhysicsWorld, didRemove body: PhysicsBody) {
+        print("➖ Removed physics body \\(body.id)")
+    }
+}

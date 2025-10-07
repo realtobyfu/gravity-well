@@ -37,6 +37,10 @@ world.addBody(shape)
 world.startSimulation()
 ```
 
+## Demo App
+
+A standalone iOS demo application is available in the `GravityWellDemo/` directory for testing and profiling with Instruments. See [GravityWellDemo/README.md](GravityWellDemo/README.md) for setup instructions.
+
 ## Architecture
 
 - **Physics Layer**: UIKit Dynamics with custom extensions

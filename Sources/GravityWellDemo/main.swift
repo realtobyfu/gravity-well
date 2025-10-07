@@ -1,112 +1,150 @@
 import Foundation
 import GravityWellKit
-import UIKit
 
-@available(iOS 17.0, macOS 14.0, *)
-@main
-struct GravityWellDemo {
-    static func main() {
-        print("🌌 Gravity Well Physics Framework Demo")
-        print("======================================")
+@available(macOS 14.0, *)
+final class PoolingDemo {
+    var world: PhysicsWorld?
+    var isRunning = true
+    var cycleCount = 0
 
-        // Initialize the physics engine
-        GravityWellKit.initialize()
+    func printPoolStats() {
+        let stats = PhysicsObjectPool.shared.getShapePoolStatistics()
+        print("""
 
-        // Create a physics world
-        let bounds = PhysicsBounds(minX: 0, maxX: 800, minY: 0, maxY: 600)
-        let world = PhysicsWorld(bounds: bounds)
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        📊 Object Pool Statistics
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        Total Acquires:  \(stats.totalAcquires)
+        New Creations:   \(stats.totalCreations)
+        Reused Objects:  \(stats.totalReuses)
+        Total Releases:  \(stats.totalReleases)
+        Available:       \(stats.availableCount)
+        Reuse Rate:      \(String(format: "%.1f", stats.reuseRate))%
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        """)
+    }
 
-        // Set up demo delegate
-        let delegate = DemoWorldDelegate()
-        world.delegate = delegate
+    func run() {
+        print("""
+        ┌──────────────────────────────────────────┐
+        │   GravityWell Object Pooling Demo       │
+        │   Press Ctrl+C to stop                   │
+        └──────────────────────────────────────────┘
 
-        // Register with intent handler
-        PhysicsIntentHandler.shared.setActiveWorld(world)
+        Demonstrating object pooling with rapid
+        spawn/destroy cycles to show reuse...
+        """)
 
-        // Create some initial objects
-        print("\\n📦 Creating physics objects...")
+        // Setup physics world
+        let bounds = PhysicsBounds(minX: 0, maxX: 1000, minY: 0, maxY: 1000)
+        world = PhysicsWorld(bounds: bounds)
+        world?.gravity = Vector2(0, 98)
 
-        // Add some shapes
-        for i in 0..<5 {
-            let shape = PhysicsShape(
-                circleAt: Vector2(Float(100 + i * 50), Float(100 + i * 20)),
-                radius: Float.random(in: 10...20),
-                mass: Float.random(in: 0.5...2.0)
-            )
-            shape.color = [.systemBlue, .systemRed, .systemGreen, .systemOrange].randomElement() ?? .systemBlue
-            world.addBody(shape)
+        // Setup signal handler for graceful shutdown
+        signal(SIGINT) { _ in
+            print("\n\nShutting down...")
+            exit(0)
         }
 
-        // Add a gravity well
-        print("\\n🌀 Creating gravity well...")
-        let gravityWell = GravityWell(
-            position: Vector2(400, 300),
-            strength: 1000,
-            range: 250
-        )
-        world.addForceField(gravityWell)
+        // Run simulation cycles
+        let shapesPerCycle = 50
 
-        // Add a repulsion field
-        print("\\n⚡ Creating repulsion field...")
-        let repulsionField = RepulsionField(
-            position: Vector2(200, 500),
-            strength: 500,
-            range: 150
-        )
-        world.addForceField(repulsionField)
+        print("\nStarting simulation...\n")
 
-        print("\\n🚀 Physics simulation started!")
-        print("💡 Try these Siri commands:")
-        print("   • 'Set gravity to Jupiter'")
-        print("   • 'Spawn 10 circle shapes'")
-        print("   • 'Create gravity well with strength 2000'")
-        print("   • 'Clear simulation'")
+        // Initial warmup to populate pool
+        print("⏳ Warming up object pool...")
+        warmupPool(count: 100)
+        print("✓ Pool warmed up\n")
 
-        // Performance monitoring
-        print("\\n📊 Performance monitoring enabled")
-        let monitor = PerformanceMonitor.shared
+        // Run cycles
+        for cycle in 1...20 {
+            cycleCount = cycle
+            print("Cycle \(cycle)/20: Spawning \(shapesPerCycle) shapes...")
 
-        // Simulate running for a few seconds
-        let runLoop = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            let report = monitor.getPerformanceReport()
-            print("FPS: \\(String(format: "%.1f", report.fps)) | Physics: \\(String(format: "%.2f", report.averagePhysicsTime))ms | Grade: \\(report.performanceGrade)")
+            // Spawn many shapes using pool
+            var shapes: [PhysicsShape] = []
+            for _ in 0..<shapesPerCycle {
+                let shape = PhysicsObjectPool.shared.acquireShape()
+                // Configure the pooled shape
+                shape.position = Vector2(
+                    Float.random(in: 100...900),
+                    Float.random(in: 100...900)
+                )
+                shape.radius = Float.random(in: 5...15)
+                shape.mass = Float.random(in: 0.5...2.0)
+                shape.velocity = Vector2(
+                    Float.random(in: -50...50),
+                    Float.random(in: -50...50)
+                )
+                shapes.append(shape)
+                world?.addBody(shape)
+            }
+
+            // Simulate for a bit
+            Thread.sleep(forTimeInterval: 0.1)
+
+            // Remove shapes (return to pool)
+            for shape in shapes {
+                world?.removeBody(shape)
+                PhysicsObjectPool.shared.releaseShape(shape)
+            }
+
+            // Print stats every few cycles
+            if cycle % 5 == 0 {
+                printPoolStats()
+                printPerformanceMetrics()
+            }
         }
 
-        print("\\n✅ Demo setup complete! The physics simulation is running...")
-        print("🔧 Framework features demonstrated:")
-        print("   ✓ Protocol-oriented architecture")
-        print("   ✓ High-performance physics engine")
-        print("   ✓ Force fields and gravity wells")
-        print("   ✓ App Intents integration")
-        print("   ✓ Performance monitoring")
-        print("   ✓ Object pooling system")
+        // Final statistics
+        print("\n")
+        printPoolStats()
+        printPerformanceMetrics()
 
-        // Keep the demo running
-        RunLoop.main.run()
+        print("""
+
+        ✅ Demo Complete!
+
+        Object pooling reduces memory allocations by
+        reusing objects instead of creating new ones.
+
+        To profile with Instruments:
+        1. Build in release mode: swift build -c release
+        2. Run Instruments → Allocations
+        3. Watch for object reuse vs new allocations
+        """)
+    }
+
+    private func warmupPool(count: Int) {
+        var shapes: [PhysicsShape] = []
+        for _ in 0..<count {
+            let shape = PhysicsObjectPool.shared.acquireShape()
+            shapes.append(shape)
+        }
+        for shape in shapes {
+            PhysicsObjectPool.shared.releaseShape(shape)
+        }
+    }
+
+    private func printPerformanceMetrics() {
+        guard let world = world else { return }
+        let report = PerformanceMonitor.shared.getPerformanceReport()
+
+        print("""
+
+        🎯 Performance Metrics
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        Active Bodies:       \(world.getAllBodies().count)
+        Performance Grade:   \(report.performanceGrade)
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        """)
     }
 }
 
-@available(iOS 17.0, macOS 14.0, *)
-class DemoWorldDelegate: PhysicsWorldDelegate {
-    private var updateCount = 0
-
-    func physicsWorldDidUpdate(_ world: PhysicsWorld) {
-        updateCount += 1
-        PerformanceMonitor.shared.recordFrame()
-
-        // Print status every 60 updates (approximately 1 second at 60 FPS)
-        if updateCount % 60 == 0 {
-            // Could log physics state here if needed
-        }
-    }
-
-    func physicsWorld(_ world: PhysicsWorld, didAdd body: PhysicsBody) {
-        if let shape = body as? PhysicsShape {
-            print("➕ Added \\(shape.shapeType) shape at \\(shape.position)")
-        }
-    }
-
-    func physicsWorld(_ world: PhysicsWorld, didRemove body: PhysicsBody) {
-        print("➖ Removed physics body \\(body.id)")
-    }
+// Main entry point
+if #available(macOS 14.0, *) {
+    let demo = PoolingDemo()
+    demo.run()
+} else {
+    print("This demo requires macOS 14.0 or later")
 }
